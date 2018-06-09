@@ -41,9 +41,6 @@ import java.io.RandomAccessFile;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.Calendar;
-//TODO: Arreglar ProgressBar
-//TODO: Preferencies per defecte
-
 
 public class SelectFileActivity extends AppCompatActivity{
 
@@ -67,10 +64,6 @@ public class SelectFileActivity extends AppCompatActivity{
     private int W;
     private int Ho;
     private int Wo;
-    int color_chroma = Color.parseColor("#7c8767"); //7c8767 #6d7150
-    int tol = 25;
-    int color_white = Color.parseColor("#ffffff");
-    int color_black = Color.parseColor("#000000");
 
     private ProgressBar mProgressBar;
     private int mProgressStatus = 0;
@@ -118,7 +111,6 @@ public class SelectFileActivity extends AppCompatActivity{
 
         // Posem a les preferencies els valors per defecte
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-        //TODO... NO LES POSA!
 
         // Quan es toca a la pantalla demana s'obriràun quadre de text per escollir d'on volem agafar la imatge
         ima.setOnClickListener(new View.OnClickListener() {
@@ -160,7 +152,7 @@ public class SelectFileActivity extends AppCompatActivity{
                             mProgressBar.setVisibility(View.VISIBLE);
                             mProgressBar.setProgress(0);
                             CG='G';
-                            change_Color();
+                            ima.setImageBitmap(bm);
                     } catch (IOException e) {
                         e.printStackTrace();
                         return;
@@ -181,7 +173,7 @@ public class SelectFileActivity extends AppCompatActivity{
                     mProgressBar.setVisibility(View.VISIBLE);
                     mProgressBar.setProgress(0);
                     CG='C';
-                    change_Color();
+                    ima.setImageBitmap(bm);
                 }
                 break;
         }
@@ -506,43 +498,6 @@ public class SelectFileActivity extends AppCompatActivity{
 
             }
 
-    }
-
-    public void change_Color() {
-        bm = convertToMutable(bm);
-        int mPhotoWidth = bm.getWidth();
-        int mPhotoHeight = bm.getHeight();
-        int[] pix = new int[mPhotoWidth * mPhotoHeight];
-        int index, r, g, b, yy, R, G, B, Y;
-        R = (color_chroma >> 16) & 0xff;
-        G = (color_chroma >> 8) & 0xff;
-        B = color_chroma & 0xff;
-        Y = (30 * R + 59 * G + 11 * B) / 100;
-        bm.getPixels(pix, 0, mPhotoWidth, 0, 0, mPhotoWidth, mPhotoHeight);
-        for (int y = 0; y < mPhotoHeight; y++) {
-            for (int x = 0; x < mPhotoWidth; x++) {
-                index = y * mPhotoWidth + x;
-                r = (pix[index] >> 16) & 0xff;
-                g = (pix[index] >> 8) & 0xff;
-                b = pix[index] & 0xff;
-                yy = (30 * r + 59 * g + 11 * b) / 100;
-                //Mirem si els valors del color es troben dins dels parametres de tolerancia
-                if (!(Y + tol >= yy && Y - tol <= yy &&
-                        R + tol >= r && R - tol <= r &&
-                        B + tol >= b && B - tol <= b &&
-                        G + tol >= g && G - tol <= g
-                )) {
-                    //pix[index] = getResources().getColor(transparent);
-                    pix[index] = color_white;
-                }
-                else{
-                    //pix[index] = color_black;
-                }
-            }
-        }
-        bm.setPixels(pix, 0, mPhotoWidth, 0, 0, mPhotoWidth, mPhotoHeight);
-        // Fem visible el nou bitmap
-        ima.setImageBitmap(bm);
     }
 
 
