@@ -2,33 +2,40 @@ package uroz.cristina.slopeline;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
-import android.widget.TextView;
-
 
 import org.opencv.android.Utils;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
+import org.opencv.features2d.AgastFeatureDetector;
+import org.opencv.features2d.DescriptorExtractor;
+import org.opencv.features2d.DescriptorMatcher;
+import org.opencv.features2d.FastFeatureDetector;
+import org.opencv.features2d.FeatureDetector;
+import org.opencv.features2d.Features2d;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.xfeatures2d.SIFT;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+
 
 public class OpenCvRunnable implements Runnable {
 
@@ -48,6 +55,14 @@ public class OpenCvRunnable implements Runnable {
     private int num_imatge=0;
     private String image_dir = "/SlopeLine/data/";
     private String countourT;
+    private static final FeatureDetector orb = FeatureDetector.create(FeatureDetector.ORB);
+    private static final DescriptorExtractor akaze = DescriptorExtractor.create(DescriptorExtractor.AKAZE);
+
+
+    //private static final AgastFeatureDetector featureDetector = AgastFeatureDetector.create();
+
+
+    private static final SIFT sift = SIFT.create();
 
     public OpenCvRunnable(final String imagePath,
                           final int blurKernelSize,
@@ -178,6 +193,7 @@ public class OpenCvRunnable implements Runnable {
             MatOfPoint approxCurve = new MatOfPoint();
             approxCurve2f.convertTo(approxCurve, CvType.CV_32S);
 
+
             // skip small areas
             if (Math.abs(Imgproc.contourArea(contour2f)) < mShapeIgnoreSize) {
                 Log.d(TAG, "small shape...skipping");
@@ -218,8 +234,19 @@ public class OpenCvRunnable implements Runnable {
             }
             this.status = i*100/contours.size();
         }
+
+
         saveToStorage(finalMat,"4_finalMat");
         this.status = 100;
+
+        //////////////////////////////
+
+
+        ///////////////////////////
+
+
+
+        //MatToBitmap(finalMat);
         MatToBitmap(finalMat);
     }
 
@@ -274,6 +301,25 @@ public class OpenCvRunnable implements Runnable {
                 mShapeIgnoreSize + ";" + mShapeIgnoreConcave + ";" + mdrawFilteredShapes;
     }
 
+    /*
+    private void detect_square(Mat img){
+        Mat square = new Mat();
+        Bitmap icon = BitmapFactory.decodeResource(context.getResources(),
+                R.drawable.a_1);
+        Utils.bitmapToMat(icon, square);
+
+
+        MatOfKeyPoint keyPoints_square = new MatOfKeyPoint();
+        MatOfKeyPoint keyPoints_img = new MatOfKeyPoint();
+        featureDetector.detect(img,keyPoints_square);
+        featureDetector.detect(img,keyPoints_img);
+
+        DescriptorMatcher macher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_SL2);
+        //macher.
+
+
+    }
+    */
 
 }
 

@@ -7,6 +7,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.net.Uri;
 
@@ -27,24 +28,24 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.Calendar;
-
 //TODO: Arreglar ProgressBar
 //TODO: Preferencies per defecte
 
 
-public class SelectFileActivity extends AppCompatActivity  /*implements View.OnTouchListener*/ {
+public class SelectFileActivity extends AppCompatActivity{
 
     private static final int MY_PERMISSIONS_REQUEST_WRITE_EXTERNAL_STORAGE = 0;
     private static final int MY_PERMISSIONS_REQUEST_CAMERA = 1;
@@ -57,7 +58,7 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
     private String image_dir = "/SlopeLine/data/";
     private static boolean sOpenCVAvailable = true;
     public static final String TAG = SelectFileActivity.class.getSimpleName();
-    private int pix_max = 1600;
+    private int pix_max = 1200;
     private boolean guardada = false;
     private Bitmap bm;
     private int num;
@@ -66,10 +67,18 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
     private int W;
     private int Ho;
     private int Wo;
+    int color_chroma = Color.parseColor("#7c8767"); //7c8767 #6d7150
+    int tol = 25;
+    int color_white = Color.parseColor("#ffffff");
+    int color_black = Color.parseColor("#000000");
 
     private ProgressBar mProgressBar;
     private int mProgressStatus = 0;
     private Handler mHandler = new Handler();
+
+    static {
+        OpenCVLoader.initDebug();
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +114,8 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
         next.setVisibility(View.INVISIBLE);
         mProgressBar.setVisibility(View.INVISIBLE);
 
+
+
         // Posem a les preferencies els valors per defecte
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         //TODO... NO LES POSA!
@@ -129,35 +140,6 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
         });
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        // Mirem si l'openCV està disponible cada vegada que l'app es torna a carregar
-        OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_1_0, this, mBaseLoaderCallback);
-    }
-
-    private BaseLoaderCallback mBaseLoaderCallback = new BaseLoaderCallback(this) {
-        @Override
-        public void onManagerConnected(int status) {
-            switch (status) {
-                // OpenCV disponlibre
-                case LoaderCallbackInterface.SUCCESS:
-                    sOpenCVAvailable = true;
-                    Log.i(TAG, "OpenCV carregat correctament");
-                    break;
-                // Casos que poden donar error
-                case LoaderCallbackInterface.INCOMPATIBLE_MANAGER_VERSION:
-                case LoaderCallbackInterface.INIT_FAILED:
-                case LoaderCallbackInterface.INSTALL_CANCELED:
-                case LoaderCallbackInterface.MARKET_ERROR:
-                    sOpenCVAvailable = false;
-                    Log.i(TAG, "Error al carregar OpenCV - codi = " + status);
-                default:
-                    super.onManagerConnected(status);
-            }
-        }
-    };
-
     // Es guarda l'uri de la imatge escollida i es fa el display a l'image view corresponent
     // Es posa visible el boto next/play
     @Override
@@ -171,13 +153,14 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
                         try{
                         bm=MediaStore.Images.Media.getBitmap(this.getContentResolver(), ima_uri);
                             Resize();
-                            ima.setImageBitmap(bm);
+                            //ima.setImageBitmap(bm);
                             text_ima.setVisibility(View.INVISIBLE);
                             guardada=false;
                             next.setVisibility(View.VISIBLE);
                             mProgressBar.setVisibility(View.VISIBLE);
                             mProgressBar.setProgress(0);
                             CG='G';
+                            change_Color();
                     } catch (IOException e) {
                         e.printStackTrace();
                         return;
@@ -190,7 +173,7 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
                 if (resultCode == RESULT_OK) {
                     bm = BitmapFactory.decodeFile(fileName);
                     Resize();
-                    ima.setImageBitmap(bm);
+                    //ima.setImageBitmap(bm);
                     text_ima.setVisibility(View.INVISIBLE);
                     guardada=false;
                     //bMap.recycle();
@@ -198,6 +181,7 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
                     mProgressBar.setVisibility(View.VISIBLE);
                     mProgressBar.setProgress(0);
                     CG='C';
+                    change_Color();
                 }
                 break;
         }
@@ -522,6 +506,83 @@ public class SelectFileActivity extends AppCompatActivity  /*implements View.OnT
 
             }
 
+    }
+
+    public void change_Color() {
+        bm = convertToMutable(bm);
+        int mPhotoWidth = bm.getWidth();
+        int mPhotoHeight = bm.getHeight();
+        int[] pix = new int[mPhotoWidth * mPhotoHeight];
+        int index, r, g, b, yy, R, G, B, Y;
+        R = (color_chroma >> 16) & 0xff;
+        G = (color_chroma >> 8) & 0xff;
+        B = color_chroma & 0xff;
+        Y = (30 * R + 59 * G + 11 * B) / 100;
+        bm.getPixels(pix, 0, mPhotoWidth, 0, 0, mPhotoWidth, mPhotoHeight);
+        for (int y = 0; y < mPhotoHeight; y++) {
+            for (int x = 0; x < mPhotoWidth; x++) {
+                index = y * mPhotoWidth + x;
+                r = (pix[index] >> 16) & 0xff;
+                g = (pix[index] >> 8) & 0xff;
+                b = pix[index] & 0xff;
+                yy = (30 * r + 59 * g + 11 * b) / 100;
+                //Mirem si els valors del color es troben dins dels parametres de tolerancia
+                if (!(Y + tol >= yy && Y - tol <= yy &&
+                        R + tol >= r && R - tol <= r &&
+                        B + tol >= b && B - tol <= b &&
+                        G + tol >= g && G - tol <= g
+                )) {
+                    //pix[index] = getResources().getColor(transparent);
+                    pix[index] = color_white;
+                }
+                else{
+                    //pix[index] = color_black;
+                }
+            }
+        }
+        bm.setPixels(pix, 0, mPhotoWidth, 0, 0, mPhotoWidth, mPhotoHeight);
+        // Fem visible el nou bitmap
+        ima.setImageBitmap(bm);
+    }
+
+
+    public static Bitmap convertToMutable(Bitmap imgIn) {
+        try {
+            // Fitxer temporal de treball que conte els bits de la imatge (no es una imatge)
+            File file = new File(Environment.getExternalStorageDirectory() + File.separator + "temp.tmp");
+
+            // Es crea un RandomAccessFile
+            RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw");
+
+            // Ample i alt del bitmap
+            int width = imgIn.getWidth();
+            int height = imgIn.getHeight();
+            Bitmap.Config type = imgIn.getConfig();
+
+            // Copy the byte to the file
+            //Assume source bitmap loaded using options.inPreferredConfig = Config.ARGB_8888;
+            FileChannel channel = randomAccessFile.getChannel();
+            MappedByteBuffer map = channel.map(FileChannel.MapMode.READ_WRITE, 0, imgIn.getRowBytes() * height);
+            imgIn.copyPixelsToBuffer(map);
+            imgIn.recycle();
+            System.gc();
+
+            // Es crea el bitmap que es podra editar i s'hi carrega l'anterior
+            imgIn = Bitmap.createBitmap(width, height, type);
+            map.position(0);
+            // load it back from temporary
+            imgIn.copyPixelsFromBuffer(map);
+            // close the temporary file and channel , then delete that also
+            channel.close();
+            randomAccessFile.close();
+            // delete the temp file
+            file.delete();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return imgIn;
     }
 
 }
