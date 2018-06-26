@@ -52,7 +52,7 @@ public class SelectFileActivity extends AppCompatActivity{
     private TextView text_ima;
     private String fileName;
     private File dir;
-    private String image_dir = "/SlopeLine/data/";
+    private String image_dir = "/LinesDetection/data/";
     private static boolean sOpenCVAvailable = true;
     public static final String TAG = SelectFileActivity.class.getSimpleName();
     private int pix_max = 1200;

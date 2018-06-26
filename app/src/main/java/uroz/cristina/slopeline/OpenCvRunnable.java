@@ -53,7 +53,7 @@ public class OpenCvRunnable implements Runnable {
     private Bitmap bm=null;
     private int status=0;
     private int num_imatge=0;
-    private String image_dir = "/SlopeLine/data/";
+    private String image_dir = "/LinesDetection/data/";
     private String countourT;
     private static final FeatureDetector orb = FeatureDetector.create(FeatureDetector.ORB);
     private static final DescriptorExtractor akaze = DescriptorExtractor.create(DescriptorExtractor.AKAZE);

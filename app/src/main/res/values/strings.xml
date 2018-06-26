@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name" translatable="false">SlopeLine</string>
+    <string name="app_name" translatable="false">LinesDetection</string>
     <string name="PickImage">Tap to pick or take a map image</string>
     <string name="gallery">Gallery</string>
     <string name="camera">Camera</string>
